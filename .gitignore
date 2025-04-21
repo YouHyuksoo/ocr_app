@@ -1,0 +1,7 @@
+/dataset
+.venv
+yolov8n.pt
+.vscode
+__pycache__/
+*.pyc
+*.pyo

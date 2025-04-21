@@ -1,0 +1,50 @@
+[theme]
+primaryColor = "#4bff98"
+backgroundColor = "#f0f2f6"
+secondaryBackgroundColor = "#e0e0ef"
+textColor = "#262730"
+font = "sans serif"
+
+[server]
+port = 8501
+enableCORS = false
+enableXsrfProtection = true
+maxUploadSize = 200
+headless = true
+runOnSave = true
+
+[ocr_system]
+auto_start_detection = false
+
+[ui]
+auto_redirect_to_detection = false
+detection_page_path = "감지실행"
+
+[roi]
+x = 247
+y = 177
+width = 573
+height = 473
+
+[camera]
+width = 640
+height = 480
+
+[training]
+model_path = "yolov8n.pt"
+model_arch = "yolov8n.pt"
+epochs = 1
+batch = 1
+imgsz = 640
+optimizer = "Adam"
+learning_rate = 0.001
+project_name = "ocr_digit"
+
+[detection]
+confidence_threshold = 0.2
+mode_option = "숫자 감지"
+model_path = "runs/detect/ocr_digit/weights/best.pt"
+conf = 0.45
+iou = 0.45
+agnostic_nms = false
+max_det = 10

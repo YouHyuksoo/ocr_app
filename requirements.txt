@@ -1,0 +1,10 @@
+streamlit>=1.32.0
+opencv-python
+numpy
+Pillow
+ultralytics>=8.0.0
+pandas
+matplotlib
+pyyaml
+streamlit-drawable-canvas
+pymodbus
