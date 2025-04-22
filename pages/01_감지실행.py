@@ -48,16 +48,31 @@ def cleanup():
 
 atexit.register(cleanup)
 
+# 상단에서 설정 로드
 ocr_config = load_config("ocr_system") or {}
 roi_config = load_config("roi") or {}
 camera_config = load_config("camera") or {}
-detection_config = load_config("detection") or {}
+detection_config = load_config("detection") or {
+    "entry_direction": "left_to_right",
+    "digit_count": 3,
+    "model_path": "yolov8n.pt",
+}
 
-# 설정값
+# 설정값 추출
 auto_start = ocr_config.get("auto_start_detection", False)
 model_path = detection_config.get("model_path", "yolov8n.pt")
 camera_width = camera_config.get("width", 320)
 camera_height = camera_config.get("height", 240)
+expected_digits = detection_config.get("digit_count", 3)
+entry_direction = detection_config.get("entry_direction", "left_to_right")
+
+# 방향 매핑 정의 (상수로 분리)
+DIRECTION_MAP = {
+    "left_to_right": "좌→우",
+    "right_to_left": "우→좌",
+    "top_to_bottom": "상→하",
+    "bottom_to_top": "하→상",
+}
 
 # 세션 상태 초기화
 st.session_state.setdefault("detecting", auto_start)
@@ -67,9 +82,17 @@ st.session_state.setdefault("camera", None)
 st.session_state.setdefault("start_button_clicked", False)
 
 # setup_sidebar 함수 호출
-video_source, confidence_threshold, is_digit_mode, plc_settings = setup_sidebar(
-    status_bar
-)
+(
+    video_source,
+    confidence_threshold,
+    is_digit_mode,
+    plc_settings,
+    sidebar_camera_index,
+) = setup_sidebar(status_bar)
+
+# 비디오 소스 선택 후 카메라 인덱스 표시
+if video_source == "웹캠":
+    st.sidebar.info(f"📷 현재 카메라 인덱스: {sidebar_camera_index}")
 
 # 이미지 업로드 UI
 uploaded_image = None
@@ -78,15 +101,22 @@ if video_source == "이미지":
         "🖼️ 이미지 업로드", type=["jpg", "png"], help="이미지를 업로드하세요."
     )
 
-# 모델 초기화
-model = setup_detector(model_path)
+# detection_config에서 설정값 추출
+model_settings = {
+    "conf": detection_config.get("conf", 0.25),
+    "iou": detection_config.get("iou", 0.45),
+    "agnostic_nms": detection_config.get("agnostic_nms", False),
+    "max_det": detection_config.get("max_det", 10),
+}
+
+# 모델 초기화 시 설정값 전달
+model = setup_detector(model_path, model_settings)
 recent_logs = deque(maxlen=100)
 last_sent_digit = None
 sent_history = deque(maxlen=10)
 
 # 버튼 및 이미지 확대/축소 컨테이너 (항상 상단에 위치하도록 고정)
 with st.container():
-    st.markdown("### 제어 버튼 및 이미지 크기 제어")
     start_col, stop_col, release_col, zoom_out_col, zoom_in_col = st.columns(5)
     start_button = start_col.button("▶️ 감지 시작")
     stop_button = stop_col.button("⏹️ 감지 중지")
@@ -106,6 +136,21 @@ if start_button:
     st.session_state.detecting = True
     st.session_state.start_button_clicked = True
     st.session_state.need_camera_connection = video_source == "웹캠"
+    if video_source == "웹캠" and not isinstance(
+        st.session_state.camera, cv2.VideoCapture
+    ):
+        cap, frame = connect_camera(
+            sidebar_camera_index,  # camera_index 대신 sidebar_camera_index 사용
+            camera_width,
+            camera_height,
+            status_bar,
+        )
+        if isinstance(cap, cv2.VideoCapture):
+            st.session_state.camera = cap
+            st.success(f"카메라(인덱스: {sidebar_camera_index}) 연결 성공")
+        else:
+            st.error(f"카메라(인덱스: {sidebar_camera_index}) 연결 실패")
+            st.session_state.detecting = False
 
 if stop_button:
     st.session_state.detecting = False
@@ -141,13 +186,24 @@ with st.container():
                             frame,
                             confidence_threshold,
                             is_digit_mode,
-                            {},
+                            detection_config,
                             status_bar,
                         )
                     )
-                    if is_digit_mode and len(detected_digits) == 3:
-                        combined = "".join(detected_digits)
-                        st.sidebar.markdown(f"**감지된 숫자:** `{combined}`")
+
+                    # 감지된 숫자 표시
+                    if is_digit_mode:
+                        st.sidebar.markdown("### 감지 결과")
+                        st.sidebar.markdown(
+                            f"- **진입 방향**: {DIRECTION_MAP.get(entry_direction)}"
+                        )
+                        st.sidebar.markdown(f"- **예상 자릿수**: {expected_digits}")
+                        st.sidebar.markdown(f"- **감지된 숫자**: `{combined}`")
+
+                        if len(detected_digits) != expected_digits:
+                            st.sidebar.warning(
+                                f"⚠️ 예상 자릿수({expected_digits})와 다른 {len(detected_digits)}자리가 감지되었습니다"
+                            )
 
                     buffered = BytesIO()
                     Image.fromarray(
@@ -165,19 +221,6 @@ with st.container():
                     status_bar.update("오류 발생. 감지 중단.")
 
         elif video_source == "웹캠":
-            if st.session_state.need_camera_connection:
-                if not isinstance(st.session_state.camera, cv2.VideoCapture):
-                    cap, frame = connect_camera(
-                        0, camera_width, camera_height, status_bar
-                    )
-                    if isinstance(cap, cv2.VideoCapture):
-                        st.session_state.camera = cap
-                        st.success("카메라 연결 성공")
-                    else:
-                        st.error("카메라 연결 실패")
-                        st.session_state.detecting = False
-                st.session_state.need_camera_connection = False
-
             if st.session_state.camera:
                 while st.session_state.detecting:
                     ret, frame = st.session_state.camera.read()
@@ -185,27 +228,53 @@ with st.container():
                         st.warning("프레임 읽기 실패")
                         break
 
-                    detections, detected_digits, combined, annotated_display = (
-                        process_detections(
-                            model,
-                            frame,
-                            confidence_threshold,
-                            is_digit_mode,
-                            {},
-                            status_bar,
+                    try:
+                        status_bar.update("웹캠에서 객체 감지 중...")
+                        detections, detected_digits, combined, annotated_display = (
+                            process_detections(
+                                model,
+                                frame,
+                                confidence_threshold,
+                                is_digit_mode,
+                                detection_config,
+                                status_bar,
+                            )
                         )
-                    )
 
-                    buffered = BytesIO()
-                    Image.fromarray(
-                        cv2.cvtColor(annotated_display, cv2.COLOR_BGR2RGB)
-                    ).save(buffered, format="PNG")
-                    img_base64 = base64.b64encode(buffered.getvalue()).decode()
+                        # 감지된 숫자 표시
+                        if is_digit_mode:
+                            st.sidebar.markdown("### 감지 결과")
+                            st.sidebar.markdown(
+                                f"- **진입 방향**: {DIRECTION_MAP.get(entry_direction)}"
+                            )
+                            st.sidebar.markdown(f"- **예상 자릿수**: {expected_digits}")
+                            st.sidebar.markdown(f"- **감지된 숫자**: `{combined}`")
 
-                    FRAME_WINDOW.markdown(
-                        f"<img src='data:image/png;base64,{img_base64}' style='width:{st.session_state.image_width_percent}%;'/>",
-                        unsafe_allow_html=True,
-                    )
+                            if len(detected_digits) != expected_digits:
+                                st.sidebar.warning(
+                                    f"⚠️ 예상 자릿수({expected_digits})와 다른 {len(detected_digits)}자리가 감지되었습니다"
+                                )
+
+                        buffered = BytesIO()
+                        Image.fromarray(
+                            cv2.cvtColor(annotated_display, cv2.COLOR_BGR2RGB)
+                        ).save(buffered, format="PNG")
+                        img_base64 = base64.b64encode(buffered.getvalue()).decode()
+
+                        FRAME_WINDOW.markdown(
+                            f"<img src='data:image/png;base64,{img_base64}' style='width:{st.session_state.image_width_percent}%;'/>",
+                            unsafe_allow_html=True,
+                        )
+
+                    except Exception as e:
+                        st.error(f"웹캠 감지 중 오류 발생: {e}")
+                        status_bar.update("오류 발생. 감지 중단.")
+                        break
+            else:
+                st.error(
+                    "카메라가 연결되지 않았습니다. 감지 시작 버튼을 다시 눌러주세요."
+                )
+                st.session_state.detecting = False
 
 st.markdown("---")
 st.markdown("### 카메라 설정값")

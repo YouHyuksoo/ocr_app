@@ -133,11 +133,41 @@ with col1:
             in ["yolov8n.pt", "yolov8s.pt", "yolov8m.pt", "yolov8l.pt", "yolov8x.pt"]
             else 0
         ),
+        help="YOLO 모델의 크기를 선택합니다.\n\n"
+        "📊 모델 크기 비교:\n"
+        "- yolov8n.pt: 가장 작고 빠른 모델 (추론 속도 ⚡️⚡️⚡️, 정확도 ★☆☆)\n"
+        "- yolov8s.pt: 작은 크기 모델 (추론 속도 ⚡️⚡️, 정확도 ★★☆)\n"
+        "- yolov8m.pt: 중간 크기 모델 (추론 속도 ⚡️, 정확도 ★★★)\n"
+        "- yolov8l.pt: 큰 크기 모델 (추론 속도 🐢, 정확도 ★★★★)\n"
+        "- yolov8x.pt: 가장 큰 모델 (추론 속도 🐢🐢, 정확도 ★★★★★)\n\n"
+        "💡 권장: 숫자 인식용으로는 yolov8n.pt나 yolov8s.pt로 시작해보세요.",
     )
 
-epochs = st.slider("Epoch 수", 1, 300, value=int(training_config.get("epochs", 100)))
+epochs = st.slider(
+    "Epoch 수",
+    1,
+    300,
+    value=int(training_config.get("epochs", 100)),
+    help="전체 데이터셋을 몇 번 반복해서 학습할지 설정합니다.\n\n"
+    "📝 epoch 설정 가이드:\n"
+    "- 너무 적으면 (< 50): 학습이 충분히 이루어지지 않을 수 있음\n"
+    "- 너무 많으면 (> 200): 과적합이 발생할 수 있음\n"
+    "- Early Stopping: 성능 개선이 없으면 자동으로 학습 중단\n\n"
+    "💡 권장값: 100~150 정도에서 시작하여 조정",
+)
 
-batch = st.slider("Batch Size", 1, 64, value=int(training_config.get("batch", 16)))
+batch = st.slider(
+    "Batch Size",
+    1,
+    64,
+    value=int(training_config.get("batch", 16)),
+    help="한 번에 처리할 이미지 개수입니다.\n\n"
+    "🔍 batch size 특징:\n"
+    "- 큰 값: 학습이 안정적이지만 더 많은 메모리 필요\n"
+    "- 작은 값: 적은 메모리로 가능하나 학습이 불안정할 수 있음\n"
+    "- GPU 메모리에 따라 조절 필요\n\n"
+    "💡 권장값: 16~32 (GPU 메모리 여유가 있는 경우)",
+)
 
 imgsz = st.selectbox(
     "이미지 크기",
@@ -147,6 +177,12 @@ imgsz = st.selectbox(
         if training_config.get("imgsz") in [416, 512, 640]
         else 2
     ),
+    help="학습에 사용할 이미지 크기(픽셀)를 설정합니다.\n\n"
+    "🖼️ 크기별 특징:\n"
+    "- 416: 작은 크기, 빠른 학습/추론, 작은 객체 감지력 낮음\n"
+    "- 512: 중간 크기, 균형잡힌 성능\n"
+    "- 640: 큰 크기, 느린 학습/추론, 작은 객체 감지력 높음\n\n"
+    "💡 권장: 숫자 감지의 경우 512나 640 권장",
 )
 
 optimizer = st.selectbox(
@@ -157,6 +193,17 @@ optimizer = st.selectbox(
         if training_config.get("optimizer") in ["SGD", "Adam"]
         else 1
     ),
+    help="학습에 사용할 최적화 알고리즘을 선택합니다.\n\n"
+    "🔄 옵티마이저 비교:\n"
+    "- SGD (Stochastic Gradient Descent):\n"
+    "  • 안정적이지만 수렴이 느림\n"
+    "  • 학습률 설정이 중요\n"
+    "  • 지역 최적해에 빠질 수 있음\n\n"
+    "- Adam (Adaptive Moment Estimation):\n"
+    "  • 자동으로 학습률 조절\n"
+    "  • 빠른 수렴\n"
+    "  • 대부분의 경우 좋은 성능\n\n"
+    "💡 권장: 일반적으로 Adam 사용 권장",
 )
 
 learning_rate = st.number_input(
@@ -166,10 +213,27 @@ learning_rate = st.number_input(
     min_value=0.0001,
     max_value=0.1,
     step=0.0001,
+    help="모델의 학습 속도를 조절하는 학습률입니다.\n\n"
+    "📈 학습률 설정 가이드:\n"
+    "- 너무 크면 (> 0.01):\n"
+    "  • 학습이 불안정해질 수 있음\n"
+    "  • 최적점을 건너뛸 수 있음\n\n"
+    "- 너무 작으면 (< 0.0001):\n"
+    "  • 학습이 매우 느림\n"
+    "  • 지역 최적해에 갇힐 수 있음\n\n"
+    "💡 권장값:\n"
+    "- Adam: 0.001 (기본값)\n"
+    "- SGD: 0.01",
 )
 
 project_name = st.text_input(
-    "프로젝트 이름", value=training_config.get("project_name", "ocr_digit")
+    "프로젝트 이름",
+    value=training_config.get("project_name", "ocr_digit"),
+    help="학습 결과가 저장될 프로젝트 폴더의 이름입니다.\n\n"
+    "📁 저장 위치:\n"
+    "- runs/detect/{프로젝트명}/\n"
+    "- 같은 이름으로 재실행 시 기존 결과를 덮어씁니다.\n\n"
+    "💡 팁: 실험별로 다른 이름을 사용하면 결과를 비교하기 쉽습니다.",
 )
 
 # 설정 저장 섹션

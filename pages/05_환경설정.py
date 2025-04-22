@@ -159,23 +159,46 @@ with tab3:
         1.0,
         value=detection_config.get("conf", 0.25),
         step=0.05,
+        help="객체 감지의 확신도를 조절하는 임계값입니다. (0.1~1.0)\n\n"
+        "- 값이 높을수록(1에 가까울수록) 확실한 경우에만 감지\n"
+        "- 값이 낮을수록(0.1에 가까울수록) 불확실해도 감지\n"
+        "- 너무 높으면 실제 객체를 놓칠 수 있음\n"
+        "- 너무 낮으면 잘못된 객체를 감지할 수 있음\n\n"
+        "💡 권장값: 0.25~0.45",
     )
+
     iou = st.slider(
         "IoU Threshold",
         0.1,
         1.0,
         value=detection_config.get("iou", 0.45),
         step=0.05,
+        help="겹치는 객체를 처리하는 IoU(Intersection over Union) 임계값입니다. (0.1~1.0)\n\n"
+        "- 값이 높을수록(1에 가까울수록) 겹치는 영역이 많아도 다른 객체로 인식\n"
+        "- 값이 낮을수록(0.1에 가까울수록) 겹치는 영역이 있으면 하나의 객체로 통합\n"
+        "- 너무 높으면 하나의 객체가 여러 개로 중복 감지될 수 있음\n"
+        "- 너무 낮으면 서로 다른 객체가 하나로 합쳐질 수 있음\n\n"
+        "💡 권장값: 0.45~0.65",
     )
+
     agnostic_nms = st.checkbox(
         "Agnostic NMS",
         value=detection_config.get("agnostic_nms", False),
+        help="클래스 무관 비최대 억제(Non-Maximum Suppression) 설정입니다.\n\n"
+        "- 활성화: 서로 다른 클래스의 객체라도 겹치는 영역이 많으면 하나로 처리\n"
+        "- 비활성화: 서로 다른 클래스의 객체는 겹쳐도 별도로 처리\n\n"
+        "📝 사용 예시:\n"
+        "- 숫자 '8'과 '3'이 겹쳐 있을 때\n"
+        "  - 활성화: IoU가 높으면 신뢰도가 더 높은 하나만 선택\n"
+        "  - 비활성화: 다른 숫자로 인식되면 둘 다 검출\n\n"
+        "💡 권장: 숫자가 겹치지 않는 경우 비활성화",
     )
     max_det = st.number_input(
         "Max Detections",
         min_value=1,
         max_value=100,
         value=detection_config.get("max_det", 10),
+        help="한 프레임에서 감지할 최대 객체 수를 설정합니다. 값이 클수록 더 많은 객체를 감지하지만 처리 시간이 늘어날 수 있습니다.",
     )
 
     # 감지 설정 저장 버튼
@@ -260,6 +283,14 @@ with tab5:
     # 카메라 설정 로드
     camera_config = load_config("camera")
 
+    camera_index = st.number_input(
+        "카메라 소스 인덱스",
+        min_value=0,
+        max_value=10,
+        value=camera_config.get("index", 0),
+        help="사용할 카메라의 인덱스를 설정합니다. (기본: 0-내장 카메라, 1,2...-외장 카메라)",
+    )
+
     camera_width = st.number_input(
         "카메라 너비 (픽셀)",
         min_value=320,
@@ -283,6 +314,7 @@ with tab5:
         save_config(
             "camera",
             {
+                "index": camera_index,  # 카메라 인덱스 추가
                 "width": camera_width,
                 "height": camera_height,
             },

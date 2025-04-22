@@ -9,7 +9,7 @@ def setup_sidebar(status_bar):
     Streamlit 사이드바 UI 설정
 
     Returns:
-        tuple: (비디오 소스, 감지 신뢰도, 숫자 감지 모드, PLC 설정)
+        tuple: (비디오 소스, 감지 신뢰도, 숫자 감지 모드, PLC 설정, 카메라 인덱스)
     """
     st.sidebar.header("🎥 비디오 소스")
 
@@ -31,11 +31,23 @@ def setup_sidebar(status_bar):
     model_path = training_config.get("model_path", "yolov8n.pt")
 
     # 비디오 소스 선택
-    video_source = st.sidebar.selectbox(
+    video_source = st.sidebar.radio(
         "입력 소스 선택",
-        ["웹캠", "비디오 파일", "이미지"],
-        index=0,
+        ("웹캠", "이미지"),
+        help="감지에 사용할 입력 소스를 선택하세요.",
     )
+
+    # 웹캠 선택 시 카메라 인덱스 설정 추가
+    camera_index = 0  # 기본값
+    if video_source == "웹캠":
+        camera_config = load_config("camera") or {}
+        camera_index = st.sidebar.number_input(
+            "카메라 인덱스",
+            min_value=0,
+            max_value=10,
+            value=camera_config.get("index", 0),
+            help="사용할 카메라의 인덱스 (0: 내장캠, 1~: 외장캠)",
+        )
 
     # 감지 설정 UI 생성
     st.sidebar.header("🔍 감지 설정")
@@ -48,17 +60,16 @@ def setup_sidebar(status_bar):
     default_mode = detection_config.get("mode_option", "숫자 감지")
 
     # 감지 설정 UI
-    confidence_threshold = st.sidebar.slider(
-        "Confidence Threshold", 0.1, 1.0, default_confidence, 0.05
-    )
+    confidence_threshold = st.sidebar.slider("신뢰도 임계값", 0.0, 1.0, 0.25, 0.05)
     mode_option = st.sidebar.radio(
         "감지 모드 선택",
         ["숫자 감지", "전체 객체 감지"],
         index=0 if default_mode == "숫자 감지" else 1,
     )
 
-    # 설정 변경 시 저장
+    # 설정 변경 시 저장 (카메라 인덱스 포함)
     if st.sidebar.button("설정 저장"):
+        # 감지 설정 저장
         save_config(
             "detection",
             {
@@ -66,7 +77,13 @@ def setup_sidebar(status_bar):
                 "mode_option": mode_option,
             },
         )
-        st.sidebar.success("설정이 저장되었습니다.")
+
+        # 카메라 설정 저장
+        if video_source == "웹캠":
+            camera_config["index"] = int(camera_index)
+            save_config("camera", camera_config)
+
+        st.sidebar.success("✅ 모든 설정이 저장되었습니다.")
 
     is_digit_mode = mode_option == "숫자 감지"
 
@@ -80,4 +97,4 @@ def setup_sidebar(status_bar):
         "retry": st.sidebar.number_input("재시도 횟수", 0, 5, 2),
     }
 
-    return video_source, confidence_threshold, is_digit_mode, plc_settings
+    return video_source, confidence_threshold, is_digit_mode, plc_settings, camera_index

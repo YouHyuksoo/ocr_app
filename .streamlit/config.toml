@@ -29,6 +29,7 @@ height = 473
 [camera]
 width = 640
 height = 480
+index = 0
 
 [training]
 model_path = "yolov8n.pt"
@@ -44,7 +45,7 @@ project_name = "ocr_digit"
 confidence_threshold = 0.2
 mode_option = "숫자 감지"
 model_path = "runs/detect/ocr_digit/weights/best.pt"
-conf = 0.45
+conf = 0.35
 iou = 0.45
 agnostic_nms = false
-max_det = 10
+max_det = 5
