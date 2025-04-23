@@ -30,7 +30,7 @@ device = "cpu"
 [detection]
 confidence_threshold = 0.25
 mode_option = "숫자 감지"
-model_path = "runs/detect/ocr_digit/weights/best.pt"
+model_path = "runs/detect\\ocr_digit\\weights\\best.pt"
 conf = 0.25
 iou = 0.45
 agnostic_nms = false
@@ -52,4 +52,4 @@ apply_blur = true
 apply_noise = true
 
 [paths]
-results_dir = "runs/detect"    # 학습 결과 저장 디렉토리
+results_dir = "runs/detect"
