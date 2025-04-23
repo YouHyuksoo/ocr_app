@@ -12,7 +12,7 @@ STREAMLIT_CONFIG_PATH = os.path.join(STREAMLIT_CONFIG_DIR, STREAMLIT_CONFIG_FILE
 CUSTOM_CONFIG_PATH = os.path.join(STREAMLIT_CONFIG_DIR, CUSTOM_CONFIG_FILE)
 CONFIG_PATH = Path(STREAMLIT_CONFIG_PATH)
 
-# 기본 설정 값
+# 기본 설정 값을 하나로 통합
 DEFAULT_CONFIG = {
     "theme": {
         "primaryColor": "#ff4b4b",
@@ -45,7 +45,26 @@ DEFAULT_CONFIG = {
         "width": 1024,
         "height": 768,
     },
+    "paths": {
+        "results_dir": "runs/detect",
+        "dataset_dir": "dataset",
+        "logs_dir": "logs",
+    },
+    "training": {
+        "model_arch": "yolov8n.pt",
+        "epochs": 100,
+        "batch": 16,
+        "imgsz": 640,
+        "optimizer": "Adam",
+        "learning_rate": 0.001,
+        "project_name": "ocr_digit",
+    },
 }
+
+
+def get_default_config(config_type):
+    """지정된 타입의 기본 설정을 반환합니다."""
+    return DEFAULT_CONFIG.get(config_type, {})
 
 
 def get_streamlit_config_path():

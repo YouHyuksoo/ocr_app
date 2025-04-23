@@ -19,17 +19,18 @@ index = 0
 [training]
 model_path = "yolov8n.pt"
 model_arch = "yolov8n.pt"
-epochs = 100
-batch = 16
-imgsz = 640
+epochs = 1
+batch = 1
+imgsz = 416
 optimizer = "Adam"
 learning_rate = 0.001
 project_name = "ocr_digit"
+device = "cpu"
 
 [detection]
 confidence_threshold = 0.25
 mode_option = "숫자 감지"
-model_path = "runs/detect/ocr_digit/weights/best.pt"  # 모델 경로 수정
+model_path = "runs/detect/ocr_digit/weights/best.pt"
 conf = 0.25
 iou = 0.45
 agnostic_nms = false
@@ -49,3 +50,6 @@ random_position = false
 use_random_bg = false
 apply_blur = true
 apply_noise = true
+
+[paths]
+results_dir = "runs/detect"    # 학습 결과 저장 디렉토리

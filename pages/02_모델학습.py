@@ -14,66 +14,46 @@ import glob
 from PIL import Image
 import yaml
 
-# 학습 결과 저장 경로 설정
-RESULTS_DIR = "runs/detect"  # 기본 결과 저장 디렉토리
+# 설정에서 경로 로드
+paths_config = load_config("paths")
+RESULTS_DIR = paths_config.get("results_dir", "runs/detect")  # 기본값 설정
 os.makedirs(RESULTS_DIR, exist_ok=True)
 
 # 페이지 설정
 st.set_page_config(page_title="YOLO 모델 학습", page_icon="🧠", layout="wide")
 
-# 사이드바에 설정 저장 섹션 추가
+# 설정 불러오기 (한 번만 실행)
+if "training_config" not in st.session_state:
+    st.session_state.training_config = load_config("training")
+
+# 사이드바에 설정 관리 섹션
 with st.sidebar:
-    st.subheader("⚙️ 학습 설정 저장")
-    save_as_preset = st.text_input(
-        "설정 이름",
-        placeholder="저장할 설정 이름 입력...",
-        help="현재 설정을 저장할 이름을 입력하세요",
-    )
+    st.subheader("⚙️ 학습 설정 관리")
 
+    # 현재 설정 저장하기
     if st.button("💾 현재 설정 저장", use_container_width=True):
-        if save_as_preset.strip():  # 설정 이름이 비어있지 않은 경우에만 저장
-            current_training = {
-                "model_arch": model_arch,
-                "epochs": epochs,
-                "batch": batch,
-                "imgsz": imgsz,
-                "optimizer": optimizer,
-                "learning_rate": learning_rate,
-                "project_name": project_name,
-            }
-            save_config("training", current_training)
-            st.success("✅ 학습 설정이 저장되었습니다.")
-        else:
-            st.warning("⚠️ 설정 이름을 입력해주세요.")
+        current_config = {
+            "model_arch": st.session_state.training_config.get(
+                "model_arch", "yolov8n.pt"
+            ),
+            "epochs": st.session_state.training_config.get("epochs", 100),
+            "batch": st.session_state.training_config.get("batch", 16),
+            "imgsz": st.session_state.training_config.get("imgsz", 640),
+            "optimizer": st.session_state.training_config.get("optimizer", "Adam"),
+            "learning_rate": st.session_state.training_config.get(
+                "learning_rate", 0.001
+            ),
+            "project_name": st.session_state.training_config.get(
+                "project_name", "ocr_digit"
+            ),
+            "device": st.session_state.training_config.get("device", "cpu"),
+        }
+        # 현재 설정을 저장
+        save_config("training", current_config)
+        st.success("✅ 현재 설정이 저장되었습니다.")
 
-    st.divider()
-
-# 페이지 헤더 설정
+# 페이지 제목
 st.title("🧠 YOLO 모델 학습")
-
-# 현재 설정 불러오기
-training_config = load_config("training")  # 학습 설정 불러오기
-
-# 학습 설정이 없으면 기본값으로 초기화
-if not training_config:
-    training_config = {
-        "model_arch": "yolov8n.pt",
-        "epochs": 100,
-        "batch": 16,
-        "imgsz": 640,
-        "optimizer": "Adam",
-        "learning_rate": 0.001,
-        "project_name": "ocr_digit",
-    }
-
-# 현재 설정된 모델 정보 표시
-with st.expander("현재 모델 설정 정보", expanded=False):
-    st.info(
-        f"""
-        **현재 모델 설정:**
-        - 모델 경로: {training_config.get('model_path', 'yolov8n.pt')}
-        """
-    )
 
 # 데이터셋 업로드 섹션
 st.subheader("📦 학습용 데이터셋")
@@ -280,9 +260,9 @@ model_arch = st.selectbox(
     ["yolov8n.pt", "yolov8s.pt", "yolov8m.pt", "yolov8l.pt", "yolov8x.pt"],
     index=(
         ["yolov8n.pt", "yolov8s.pt", "yolov8m.pt", "yolov8l.pt", "yolov8x.pt"].index(
-            training_config.get("model_arch", "yolov8n.pt")
+            st.session_state.training_config.get("model_arch", "yolov8n.pt")
         )
-        if training_config.get("model_arch")
+        if st.session_state.training_config.get("model_arch")
         in ["yolov8n.pt", "yolov8s.pt", "yolov8m.pt", "yolov8l.pt", "yolov8x.pt"]
         else 0
     ),
@@ -296,7 +276,7 @@ with col1:
         "Epoch 수",
         1,
         300,
-        value=int(training_config.get("epochs", 100)),
+        value=int(st.session_state.training_config.get("epochs", 100)),
         help="전체 데이터셋을 몇 번 반복해서 학습할지 설정합니다...",  # 기존 help 텍스트 유지
     )
 with col2:
@@ -304,7 +284,7 @@ with col2:
         "Batch Size",
         1,
         64,
-        value=int(training_config.get("batch", 16)),
+        value=int(st.session_state.training_config.get("batch", 16)),
         help="한 번에 처리할 이미지 개수입니다...",  # 기존 help 텍스트 유지
     )
 
@@ -315,8 +295,8 @@ with col3:
         "이미지 크기",
         [416, 512, 640],
         index=(
-            [416, 512, 640].index(training_config.get("imgsz", 640))
-            if training_config.get("imgsz") in [416, 512, 640]
+            [416, 512, 640].index(st.session_state.training_config.get("imgsz", 640))
+            if st.session_state.training_config.get("imgsz") in [416, 512, 640]
             else 2
         ),
         help="학습에 사용할 이미지 크기(픽셀)를 설정합니다...",  # 기존 help 텍스트 유지
@@ -326,8 +306,10 @@ with col4:
         "Optimizer",
         ["SGD", "Adam"],
         index=(
-            ["SGD", "Adam"].index(training_config.get("optimizer", "Adam"))
-            if training_config.get("optimizer") in ["SGD", "Adam"]
+            ["SGD", "Adam"].index(
+                st.session_state.training_config.get("optimizer", "Adam")
+            )
+            if st.session_state.training_config.get("optimizer") in ["SGD", "Adam"]
             else 1
         ),
         help="학습에 사용할 최적화 알고리즘을 선택합니다...",  # 기존 help 텍스트 유지
@@ -335,7 +317,7 @@ with col4:
 with col5:
     learning_rate = st.number_input(
         "Learning Rate",
-        value=float(training_config.get("learning_rate", 0.001)),
+        value=float(st.session_state.training_config.get("learning_rate", 0.001)),
         format="%f",
         min_value=0.0001,
         max_value=0.1,
@@ -353,16 +335,121 @@ device = st.selectbox(
     "- CUDA: NVIDIA GPU가 있는 경우 선택. 빠른 학습 가능",
 )
 
+# 디바이스 선택 옵션 아래에 덮어쓰기 옵션 추가
+overwrite = st.checkbox(
+    "기존 결과 덮어쓰기",
+    value=False,
+    help="체크하면 동일한 프로젝트 이름의 기존 결과를 덮어씁니다.\n체크하지 않으면 증분된 이름으로 저장됩니다.",
+)
+
 # 프로젝트 이름 설정
 project_name = st.text_input(
     "프로젝트 이름",
-    value=training_config.get("project_name", "ocr_digit"),
+    value=st.session_state.training_config.get("project_name", "ocr_digit"),
     help="학습 결과가 저장될 프로젝트 폴더의 이름입니다...",  # 기존 help 텍스트 유지
 )
+
+# 학습 조건 미리보기 (학습 시작 버튼 위에 배치)
+st.markdown("---")
+st.subheader("📋 학습 실행 조건")
+with st.expander("현재 설정된 학습 조건 확인", expanded=True):
+    col1, col2 = st.columns(2)
+
+    with col1:
+        st.info(
+            f"""
+        **기본 설정**
+        - 모델: {model_arch}
+        - 프로젝트명: {project_name}
+        - 학습 장치: {device.upper()}
+        - 저장 경로: {paths_config.get('results_dir', 'runs/detect')}
+        - 덮어쓰기: {'✅' if overwrite else '❌'}
+        """
+        )
+
+    with col2:
+        st.info(
+            f"""
+        **학습 파라미터**
+        - Epochs: {epochs}회
+        - Batch Size: {batch}
+        - 이미지 크기: {imgsz}px
+        - Optimizer: {optimizer}
+        - Learning Rate: {learning_rate}
+        """
+        )
+
+    # 데이터셋 정보 표시
+    yaml_path = os.path.join("dataset", "data.yaml")
+    if os.path.exists(yaml_path):
+        with open(yaml_path, "r", encoding="utf-8") as f:
+            data = yaml.safe_load(f)
+            st.info(
+                f"""
+            **데이터셋 정보**
+            - 클래스 수: {data.get('nc', '정보없음')}개
+            - 클래스명: {', '.join(data.get('names', ['정보없음']))}
+            - 저장 경로: {os.path.abspath(RESULTS_DIR)}
+            """
+            )
+
+    # YOLO 실행 명령어 미리보기 추가
+    st.subheader("⌨️ YOLO 실행 명령어")
+    data_yaml = os.path.abspath("dataset/data.yaml")
+    yolo_cmd = (
+        f"yolo task=detect mode=train model={model_arch} data={data_yaml} "
+        f"epochs={epochs} batch={batch} imgsz={imgsz} lr0={learning_rate} "
+        f"optimizer={optimizer.lower()} project={RESULTS_DIR} name={project_name} "
+        f"device={device} exist_ok={str(overwrite).lower()} verbose=True"
+    )
+    st.code(yolo_cmd, language="bash")
+
+
+# 학습 프로세스 확인 함수
+def check_training_process():
+    """현재 실행 중인 YOLO 학습 프로세스를 확인합니다."""
+    try:
+        import psutil
+
+        for proc in psutil.process_iter(["pid", "name", "cmdline"]):
+            if proc.info["cmdline"] and "yolo" in " ".join(proc.info["cmdline"]):
+                return proc
+    except:
+        return None
+    return None
+
+
+# 페이지 로드 시 학습 상태 확인
+if "training_pid" not in st.session_state:
+    st.session_state.training_pid = None
+
+# 학습 중인 프로세스 확인
+training_process = check_training_process()
+if training_process:
+    st.warning(
+        f"""⚠️ 이미 실행 중인 학습이 감지되었습니다!
+    - PID: {training_process.pid}
+    - 명령어: {' '.join(training_process.cmdline())}
+    """
+    )
+
+    if st.button("❌ 기존 학습 중단"):
+        try:
+            training_process.kill()
+            st.success("✅ 이전 학습이 중단되었습니다.")
+        except Exception as e:
+            st.error(f"학습 중단 실패: {str(e)}")
 
 # 학습 시작 버튼
 if st.button("🚀 학습 시작", use_container_width=True):
     try:
+        # 이미 실행 중인 학습 확인
+        if check_training_process():
+            st.error(
+                "❌ 이미 실행 중인 학습이 있습니다. 먼저 중단하고 다시 시도해주세요."
+            )
+            st.stop()
+
         # 데이터셋 검증
         validation_results = validate_dataset_for_training("dataset")
 
@@ -378,7 +465,7 @@ if st.button("🚀 학습 시작", use_container_width=True):
             f"yolo task=detect mode=train model={model_arch} data={data_yaml} "
             f"epochs={epochs} batch={batch} imgsz={imgsz} lr0={learning_rate} "
             f"optimizer={optimizer.lower()} project={RESULTS_DIR} name={project_name} "
-            f"device={device} verbose=True"  # device 옵션 수정
+            f"device={device} exist_ok={str(overwrite).lower()} verbose=True"  # exist_ok 옵션 추가
         )
 
         # 학습 실행
@@ -410,6 +497,7 @@ if st.button("🚀 학습 시작", use_container_width=True):
             duration = end_time - start_time
 
             if result.returncode == 0:
+                st.session_state.training_pid = None  # 학습 완료
                 # 학습 결과 저장
                 save_path = os.path.join(
                     RESULTS_DIR, project_name, "weights", "best.pt"
@@ -428,9 +516,11 @@ if st.button("🚀 학습 시작", use_container_width=True):
                 else:
                     st.warning("⚠️ 학습은 완료되었으나 모델 파일을 찾을 수 없습니다.")
             else:
+                st.session_state.training_pid = None  # 학습 실패
                 st.error("❌ 학습 중 오류가 발생했습니다.")
                 if result.stderr:
                     st.code(result.stderr.decode(), language="bash")
 
     except Exception as e:
+        st.session_state.training_pid = None  # 오류 발생
         st.error(f"❌ 오류 발생: {str(e)}")
