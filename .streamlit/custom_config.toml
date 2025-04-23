@@ -1,0 +1,51 @@
+[ocr_system]
+auto_start_detection = false
+
+[ui]
+auto_redirect_to_detection = false
+detection_page_path = "감지실행"
+
+[roi]
+x = 100
+y = 100
+width = 200
+height = 100
+
+[camera]
+width = 1024
+height = 768
+index = 0
+
+[training]
+model_path = "yolov8n.pt"
+model_arch = "yolov8n.pt"
+epochs = 100
+batch = 16
+imgsz = 640
+optimizer = "Adam"
+learning_rate = 0.001
+project_name = "ocr_digit"
+
+[detection]
+confidence_threshold = 0.25
+mode_option = "숫자 감지"
+model_path = "runs/detect/ocr_digit/weights/best.pt"  # 모델 경로 수정
+conf = 0.25
+iou = 0.45
+agnostic_nms = false
+max_det = 10
+
+[dataset]
+digits = [ "0", "1", "2", "3", "4", "5", "6", "7", "8", "9",]
+length = 3
+image_size = [ 640, 320,]
+digit_box_size = [ 180, 120,]
+digit_spacing = 20
+background = [ 255, 255, 255,]
+text_color = [ 0, 0, 0,]
+font_path = "C:/Windows/Fonts\\BRLNSDB.TTF"
+apply_distortion = true
+random_position = false
+use_random_bg = false
+apply_blur = true
+apply_noise = true

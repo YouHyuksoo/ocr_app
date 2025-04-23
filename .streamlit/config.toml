@@ -1,51 +1,56 @@
+#############################################
+# Streamlit 설정 파일
+# 앱의 테마, 서버, 실행 환경 등을 설정합니다.
+#############################################
+
 [theme]
-primaryColor = "#4bff98"
-backgroundColor = "#f0f2f6"
-secondaryBackgroundColor = "#e0e0ef"
-textColor = "#262730"
-font = "sans serif"
+# 앱의 시각적 테마 설정
+primaryColor = "#4bff98"           # 주요 강조 색상 (버튼, 슬라이더 등)
+backgroundColor = "#f0f2f6"        # 페이지 배경색
+secondaryBackgroundColor = "#e0e0ef"  # 위젯 배경색
+textColor = "#262730"             # 텍스트 색상
+font = "sans serif"               # 기본 폰트
 
 [server]
-port = 8501
-enableCORS = false
-enableXsrfProtection = true
-maxUploadSize = 200
-headless = true
-runOnSave = true
+# 서버 실행 관련 설정
+port = 8501                       # 실행 포트 번호 (기본값: 8501)
+enableCORS = true                # Cross-Origin Resource Sharing 활성화
+                                # true: 다른 도메인에서의 요청 허용
 
-[ocr_system]
-auto_start_detection = false
+enableXsrfProtection = false     # XSRF 보호 비활성화 (CORS 활성화를 위해)
+                                # false: CORS 활성화를 위해 CSRF 보호 비활성화
 
-[ui]
-auto_redirect_to_detection = false
-detection_page_path = "감지실행"
+maxUploadSize = 200             # 최대 업로드 파일 크기 (MB)
+                                # 데이터셋이나 모델 파일 업로드 시 제한
 
-[roi]
-x = 247
-y = 177
-width = 573
-height = 473
+headless = true                 # 헤드리스 모드 실행
+                                # true: 브라우저 자동 실행 없이 서버만 구동
 
-[camera]
-width = 640
-height = 480
-index = 0
+runOnSave = true                # 파일 저장 시 자동 재실행
+                                # true: 소스 코드 변경 시 자동으로 앱 재시작
 
-[training]
-model_path = "yolov8n.pt"
-model_arch = "yolov8n.pt"
-epochs = 1
-batch = 1
-imgsz = 640
-optimizer = "Adam"
-learning_rate = 0.001
-project_name = "ocr_digit"
+[browser]
+# 브라우저 관련 설정
+gatherUsageStats = false        # 사용 통계 수집 비활성화
+                                # false: 개인정보 보호를 위해 통계 수집 안함
 
-[detection]
-confidence_threshold = 0.2
-mode_option = "숫자 감지"
-model_path = "runs/detect/ocr_digit/weights/best.pt"
-conf = 0.35
-iou = 0.45
-agnostic_nms = false
-max_det = 5
+[client]
+# 클라이언트 관련 설정
+showErrorDetails = true         # 상세 에러 메시지 표시
+                                # true: 개발 중 디버깅을 위한 상세 오류 표시
+
+[runner]
+# 실행 환경 설정
+fastReruns = true              # 빠른 재실행 활성화
+                                # true: 코드 변경 시 더 빠른 재시작
+
+[logger]
+# 로깅 관련 설정
+level = "info"                 # 로그 레벨 설정
+                                # info: 일반적인 실행 정보 표시
+                                # 옵션: debug, info, warning, error
+
+[global]
+# 전역 설정
+developmentMode = false         # 개발 모드 설정
+                                # false: 프로덕션 환경에서 실행

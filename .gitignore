@@ -5,3 +5,6 @@ yolov8n.pt
 __pycache__/
 *.pyc
 *.pyo
+runs
+logs
+runs/detect/ocr_digit/weights/last.pt

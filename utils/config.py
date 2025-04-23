@@ -7,7 +7,9 @@ from pathlib import Path
 # Streamlit 설정 파일 경로
 STREAMLIT_CONFIG_DIR = ".streamlit"
 STREAMLIT_CONFIG_FILE = "config.toml"
+CUSTOM_CONFIG_FILE = "custom_config.toml"
 STREAMLIT_CONFIG_PATH = os.path.join(STREAMLIT_CONFIG_DIR, STREAMLIT_CONFIG_FILE)
+CUSTOM_CONFIG_PATH = os.path.join(STREAMLIT_CONFIG_DIR, CUSTOM_CONFIG_FILE)
 CONFIG_PATH = Path(STREAMLIT_CONFIG_PATH)
 
 # 기본 설정 값
@@ -44,6 +46,11 @@ DEFAULT_CONFIG = {
         "height": 768,
     },
 }
+
+
+def get_streamlit_config_path():
+    """Streamlit 설정 파일 경로를 반환합니다."""
+    return os.path.join(Path.home(), ".streamlit", "config.toml")
 
 
 def load_full_ui_config():
@@ -85,41 +92,43 @@ def save_full_ui_config(config):
 
 
 def load_config(section):
-    """
-    설정 파일에서 특정 섹션을 로드합니다.
-    Args:
-        section (str): 로드할 섹션 이름
-    Returns:
-        dict: 섹션의 설정 값 (없으면 빈 딕셔너리 반환)
-    """
-    if CONFIG_PATH.exists():
-        config = toml.load(CONFIG_PATH)
-        return config.get(section, {})  # 섹션이 없으면 빈 딕셔너리 반환
-    else:
-        return {}  # 설정 파일이 없으면 빈 딕셔너리 반환
-
-
-def save_config(section, cfg):
-    """
-    특정 섹션의 설정을 저장합니다.
-    Args:
-        section (str): 저장할 설정 섹션 이름 (예: "roi", "ocr_system").
-        cfg (dict): 저장할 설정 값.
-    Returns:
-        bool: 저장 성공 여부.
-    """
+    """커스텀 설정 파일에서 특정 섹션의 설정을 로드합니다."""
     try:
-        # 현재 설정 로드
-        config = load_full_ui_config()
+        if os.path.exists(CUSTOM_CONFIG_PATH):
+            with open(CUSTOM_CONFIG_PATH, "r", encoding="utf-8") as f:
+                config = toml.load(f)
+                return config.get(section, {})
+    except Exception as e:
+        print(f"설정 로드 오류: {e}")
+        return {}
 
-        # 섹션 업데이트
+
+def save_config(section, settings):
+    """커스텀 설정 파일에 특정 섹션의 설정을 저장합니다."""
+    try:
+        # 디렉토리가 없으면 생성
+        os.makedirs(STREAMLIT_CONFIG_DIR, exist_ok=True)
+
+        # 기존 설정 로드
+        if os.path.exists(CUSTOM_CONFIG_PATH):
+            with open(CUSTOM_CONFIG_PATH, "r", encoding="utf-8") as f:
+                config = toml.load(f)
+        else:
+            config = {}
+
+        # 섹션이 없으면 생성
         if section not in config:
             config[section] = {}
 
-        config[section].update(cfg)
+        # 설정 업데이트
+        config[section].update(settings)
 
-        # 설정 파일 저장
-        return save_full_ui_config(config)
+        # 설정 저장
+        with open(CUSTOM_CONFIG_PATH, "w", encoding="utf-8") as f:
+            toml.dump(config, f)
+
+        print(f"설정 저장 완료: {section}")
+        return True
     except Exception as e:
-        print(f"[CONFIG SAVE ERROR] {e}")
+        print(f"설정 저장 오류: {e}")
         return False
