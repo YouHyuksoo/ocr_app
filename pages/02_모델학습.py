@@ -419,6 +419,78 @@ def check_training_process():
     return None
 
 
+# 학습 결과 분석 함수 추가
+def show_training_results(project_name):
+    """Display training results and all result images."""
+    results_dir = os.path.join(RESULTS_DIR, project_name)
+    results_path = os.path.join(results_dir, "results.csv")
+
+    if not os.path.exists(results_dir):
+        st.warning(f"⚠️ Cannot find results folder: {results_dir}")
+        return
+
+    # Results Plots
+    if os.path.exists(results_path):
+        results_df = pd.read_csv(results_path)
+
+        col1, col2 = st.columns(2)
+        with col1:
+            # Loss plot
+            fig_loss = plt.figure(figsize=(10, 4))
+            if "train/box_loss" in results_df.columns:
+                plt.plot(
+                    results_df.index, results_df["train/box_loss"], label="Box Loss"
+                )
+            if "train/cls_loss" in results_df.columns:
+                plt.plot(
+                    results_df.index, results_df["train/cls_loss"], label="Class Loss"
+                )
+            plt.title("Training Loss")
+            plt.xlabel("Epoch")
+            plt.ylabel("Loss")
+            plt.legend()
+            st.pyplot(fig_loss)
+            plt.close()
+
+        with col2:
+            # mAP plot
+            if (
+                "metrics/mAP50(B)" in results_df.columns
+                or "val/mAP50" in results_df.columns
+            ):
+                fig_map = plt.figure(figsize=(10, 4))
+                if "metrics/mAP50(B)" in results_df.columns:
+                    plt.plot(
+                        results_df.index, results_df["metrics/mAP50(B)"], label="mAP50"
+                    )
+                elif "val/mAP50" in results_df.columns:
+                    plt.plot(results_df.index, results_df["val/mAP50"], label="mAP50")
+                plt.title("Validation mAP")
+                plt.xlabel("Epoch")
+                plt.ylabel("mAP")
+                plt.legend()
+                st.pyplot(fig_map)
+                plt.close()
+
+    # Show all result images in the folder
+    st.subheader("Result Images")
+    image_files = []
+    for ext in ["*.png", "*.jpg", "*.jpeg"]:
+        image_files.extend(glob.glob(os.path.join(results_dir, ext)))
+
+    if image_files:
+        num_cols = 4
+        for i in range(0, len(image_files), num_cols):
+            cols = st.columns(num_cols)
+            for j, col in enumerate(cols):
+                if i + j < len(image_files):
+                    img_path = image_files[i + j]
+                    img = Image.open(img_path)
+                    col.image(img, caption=os.path.basename(img_path))
+    else:
+        st.info("No result images found.")
+
+
 # 페이지 로드 시 학습 상태 확인
 if "training_pid" not in st.session_state:
     st.session_state.training_pid = None
@@ -502,6 +574,8 @@ if st.button("🚀 학습 시작", use_container_width=True):
                 save_path = os.path.join(
                     RESULTS_DIR, project_name, "weights", "best.pt"
                 )
+                results_path = os.path.join(RESULTS_DIR, project_name, "results.csv")
+
                 if os.path.exists(save_path):
                     # detection 설정 업데이트
                     detection_config = load_config("detection") or {}
@@ -513,6 +587,68 @@ if st.button("🚀 학습 시작", use_container_width=True):
                     - 소요 시간: {duration}
                     - 모델 저장 위치: {save_path}"""
                     )
+
+                    # 학습 결과 분석 섹션
+                    st.subheader("📊 학습 결과 분석")
+
+                    # 결과 그래프 표시
+                    if os.path.exists(results_path):
+                        results_df = pd.read_csv(results_path)
+
+                        # 손실 그래프
+                        fig_loss = plt.figure(figsize=(10, 4))
+                        plt.plot(
+                            results_df.index, results_df["box_loss"], label="Box Loss"
+                        )
+                        plt.plot(
+                            results_df.index, results_df["cls_loss"], label="Class Loss"
+                        )
+                        plt.title("학습 손실 그래프")
+                        plt.xlabel("Epoch")
+                        plt.ylabel("Loss")
+                        plt.legend()
+                        st.pyplot(fig_loss)
+                        plt.close()
+
+                        # mAP 그래프
+                        if "metrics/mAP50(B)" in results_df.columns:
+                            fig_map = plt.figure(figsize=(10, 4))
+                            plt.plot(
+                                results_df.index,
+                                results_df["metrics/mAP50(B)"],
+                                label="mAP50",
+                            )
+                            if "metrics/mAP50-95(B)" in results_df.columns:
+                                plt.plot(
+                                    results_df.index,
+                                    results_df["metrics/mAP50-95(B)"],
+                                    label="mAP50-95",
+                                )
+                            plt.title("검증 정확도 그래프")
+                            plt.xlabel("Epoch")
+                            plt.ylabel("mAP")
+                            plt.legend()
+                            st.pyplot(fig_map)
+                            plt.close()
+
+                    # 학습 결과 이미지 표시
+                    results_img_path = os.path.join(RESULTS_DIR, project_name)
+                    col1, col2 = st.columns(2)
+
+                    # confusion matrix
+                    confusion_matrix = os.path.join(
+                        results_img_path, "confusion_matrix.png"
+                    )
+                    if os.path.exists(confusion_matrix):
+                        with col1:
+                            st.image(confusion_matrix, caption="Confusion Matrix")
+
+                    # results
+                    results_plot = os.path.join(results_img_path, "results.png")
+                    if os.path.exists(results_plot):
+                        with col2:
+                            st.image(results_plot, caption="Results Plot")
+
                 else:
                     st.warning("⚠️ 학습은 완료되었으나 모델 파일을 찾을 수 없습니다.")
             else:
@@ -524,3 +660,26 @@ if st.button("🚀 학습 시작", use_container_width=True):
     except Exception as e:
         st.session_state.training_pid = None  # 오류 발생
         st.error(f"❌ 오류 발생: {str(e)}")
+
+# 메인 UI에 결과 분석 섹션 추가 (학습 시작 버튼 다음에 배치)
+st.markdown("---")
+st.subheader("🔍 이전 학습 결과 확인")
+
+# 결과 폴더에서 프로젝트 목록 가져오기
+available_projects = [
+    d for d in os.listdir(RESULTS_DIR) if os.path.isdir(os.path.join(RESULTS_DIR, d))
+]
+
+if available_projects:
+    selected_project = st.selectbox(
+        "프로젝트 선택",
+        available_projects,
+        index=(
+            available_projects.index(project_name)
+            if project_name in available_projects
+            else 0
+        ),
+    )
+    show_training_results(selected_project)
+else:
+    st.info("💡 아직 학습된 결과가 없습니다.")
